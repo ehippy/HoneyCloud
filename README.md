@@ -1,7 +1,7 @@
 HoneyCloud
 ==========
 
-A node.js / Arduino / Dynamo mashup to live monitor a beehive
+A node.js / Arduino / Dynamo mashup to live monitor a beehive at http://honeycloud.info
 
 
 ==========
