@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" href="">
+
+    <title>HoneyCloud</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/honeycloud.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+  </head>
+
+  <body>
+
+    <div class="container">
+      <div class="header">
+        <img src="/img/cloudIcon.png" alt="cloudIcon" style="float:left;margin-right:20px;" width="24" height="24">
+        <h3>HoneyCloud</h3>
+      </div>
+
+      <div class="col-lg-12" style="background:transparent;">
+      	
+		  	<div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+      	
+      </div>
+
+      <div class="row marketing">
+        <div class="col-lg-6">
+          <h4>Plan</h4>
+          <p>Assemble a solar-powered Arduino beehive monitoring computer to wirelessly transmit sensor data to this page.</p>
+        </div>
+		<div class="col-lg-6">
+			<a class="twitter-timeline" href="https://twitter.com/Honey_Cloud_" data-widget-id="466988221033762816">Tweets by @Honey_Cloud_</a>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+
+
+		</div>
+      </div>
+
+    </div> <!-- /container -->
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.0.0-rc.15.min.js"></script>
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.6.0/moment.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+	
+    <script type="text/javascript">
+	    
+	    var hiveData;
+	    var hiveProperties = ['reading_timestamp', 'inside_temp', 'outside_temp'];
+	    
+	    AWS.config.update({accessKeyId: 'AKIAJJLTTWRBJU3LUTSA', secretAccessKey: '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'});
+	    AWS.config.region = 'us-east-1';
+	    
+	    function getReadings() {
+	    
+		    var params = {
+			  TableName: 'hive_readings',
+			  AttributesToGet: hiveProperties,
+			  ScanIndexForward: false,
+			  Limit: 100,
+			  KeyConditions: {
+				  "hive_name":{
+	                "ComparisonOperator":"EQ",
+	                "AttributeValueList":[{"S":"custer"}]
+					},
+				  "reading_timestamp":{
+	                "ComparisonOperator":"GT",
+	                "AttributeValueList":[{"N":"0"}]
+					}
+			  }
+			};
+			
+			var dynamodb = new AWS.DynamoDB();
+			
+			dynamodb.query(params, function(err, data) {
+			  if (err) {
+				  console.log(err, err.stack);
+			  } else {
+				  console.log(data);
+				  hiveData = data.Items;
+				  drawChart();
+			  }
+			});
+			
+			
+			
+	    }
+	    
+		 function drawChart() {
+			 
+			 $(function () {
+		        $('#container').highcharts({
+		        	title: "",
+		            chart: {
+		                backgroundColor: "transparent"
+		            },
+		            colors: ['#fedc43', '#1e272a', '#7f4428', '#d03116', '#ecb78a', '#93654d'],
+		            legend: {
+		            	enabled: false,
+		                itemStyle: {"color": "#613c1b"}
+		            },
+		            xAxis: {
+		            	lineColor: "transparent",
+		                tickColor: "transparent",
+		                categories: friendlyTimeStampArray(getValuesForField('reading_timestamp', hiveData, 'N')),
+		                labels: {enabled: false}
+		            },
+		            yAxis: {
+		                title: {
+		                    text: 'Temperature (F)',
+		                    style: {"color": "#613c1b"}
+		                },
+		                labels: {
+			                style: {"color": "#613c1b"}
+		                },
+		                gridLineColor: "#c17636",
+		                plotLines: [{
+		                    value: 0,
+		                    width: 1,
+		                    color: '#c17636'
+		                }]
+		            },
+		            tooltip: {
+		                valueSuffix: 'F'
+		            },
+		            series: [{
+		                name: 'Inside Temp',
+		                data: getValuesForField('inside_temp', hiveData, 'N')
+		            }, {
+		                name: 'Outside Temp',
+		                data: getValuesForField('outside_temp', hiveData, 'N')
+		            }],
+		            credits: {enabled: false},
+		            exporting: {enabled: false}
+		        });
+		    });
+    
+		 }
+		 
+		 
+		 getReadings();   
+			
+		 function getValuesForField(fieldName, dynamoItems, fieldType) {
+			 var values = [];
+			 
+			 for (i=0;i<dynamoItems.length;i++) {
+				 try {
+					 values.push(parseFloat(dynamoItems[i][fieldName][fieldType]));
+				 } catch (e) {
+					 console.log(e);
+				 }
+			 }
+			 
+			 return values;
+		 }
+			
+	    
+	    function timestampToString(timestamp) {
+		    return moment.unix(timestamp).calendar();
+	    }
+	    
+	    function friendlyTimeStampArray(arrayOfTimestamps) {
+		    var outputArray = [];
+		    
+			 for (i=0;i<arrayOfTimestamps.length;i++) {
+				 outputArray.push(timestampToString(arrayOfTimestamps[i]));
+			 }
+		    
+		    return outputArray;
+	    }
+	    
+    </script>
+  </body>
+</html>
